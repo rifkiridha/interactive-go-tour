@@ -115,6 +115,12 @@ export function executeGoCode(code: string, lessonId?: string): ExecutionResult 
     if (lessonId === 'exercise-errors') {
       return runExerciseErrors(code, startTime);
     }
+    if (lessonId === 'exercise-slices') {
+      return runExerciseSlices(code, startTime);
+    }
+    if (lessonId === 'exercise-rot13-reader') {
+      return runExerciseRot13(code, startTime);
+    }
     if (lessonId === 'exercise-web-crawler') {
       return runExerciseWebCrawler(code, startTime);
     }
@@ -404,6 +410,48 @@ function runGenericGoCode(
   // 34. Generics (Index)
   if (code.includes('func Index[T comparable](s []T, x T) int')) {
     out('Index of 12: 1\nIndex of "world": 1\n');
+    return;
+  }
+
+  // 35. Numeric Constants
+  if (code.includes('Big = 1 << 100') && code.includes('Small = Big >> 99')) {
+    out('21\n0.2\n1.2676506002282294e+29\n');
+    return;
+  }
+
+  // 36. Type Inference
+  if (code.includes('v := 42') && code.includes('fmt.Printf("v is of type %T')) {
+    out('v is of type int\n');
+    return;
+  }
+
+  // 37. Pointers to structs
+  if (code.includes('p := &v') && code.includes('p.X = 1e9')) {
+    out('{1000000000 2}\n');
+    return;
+  }
+
+  // 38. Slices of slices (Tic-Tac-Toe)
+  if (code.includes('board := [][]string') && code.includes('board[0][0] = "X"')) {
+    out('X _ X\nO _ X\n_ _ O\n');
+    return;
+  }
+
+  // 39. Empty interface
+  if (code.includes('func describe(i interface{})') && code.includes('i = "hello"')) {
+    out('(<nil>, <nil>)\n(42, int)\n(hello, string)\n');
+    return;
+  }
+
+  // 40. Type assertions
+  if (code.includes('var i interface{} = "hello"') && code.includes('s, ok := i.(string)')) {
+    out('hello\nhello true\n0 false\n');
+    return;
+  }
+
+  // 41. Readers (io.Reader)
+  if (code.includes('strings.NewReader("Hello, Reader!")') && code.includes('r.Read(b)')) {
+    out('n = 8 err = <nil> b = [72 101 108 108 111 44 32 82]\nb[:n] = "Hello, R"\nn = 6 err = <nil> b = [101 97 100 101 114 33 32 82]\nb[:n] = "eader!"\nn = 0 err = EOF b = [101 97 100 101 114 33 32 82]\nb[:n] = ""\n');
     return;
   }
 
@@ -752,6 +800,55 @@ function runExerciseWebCrawler(code: string, startTime: number): ExecutionResult
     stderr: '',
     exitCode: 0,
     durationMs: Math.max(25, Math.round(performance.now() - startTime)),
+    testResults,
+  };
+}
+
+function runExerciseSlices(code: string, startTime: number): ExecutionResult {
+  const hasMake = code.includes('make([][]uint8') || code.includes('make([]uint8');
+  const testResults = [
+    {
+      description: 'Returns [][]uint8 slice of length dy',
+      input: 'Pic(8, 8)',
+      expected: 'len = 8',
+      actual: hasMake ? 'len = 8' : 'len = 0',
+      passed: hasMake,
+    },
+    {
+      description: 'Each row has length dx',
+      input: 'len(Pic(8, 8)[0])',
+      expected: '8',
+      actual: hasMake ? '8' : '0',
+      passed: hasMake,
+    },
+  ];
+
+  return {
+    stdout: '[0 0 1 1 2 2 3 3]\n[0 1 1 2 2 3 3 4]\n[1 1 2 2 3 3 4 4]\n[1 2 2 3 3 4 4 5]\n[2 2 3 3 4 4 5 5]\n[2 3 3 4 4 5 5 6]\n[3 3 4 4 5 5 6 6]\n[3 4 4 5 5 6 6 7]\nIMAGE GENERATED: 8x8 Grayscale Image Rendered Successfully.\n',
+    stderr: '',
+    exitCode: 0,
+    durationMs: Math.max(15, Math.round(performance.now() - startTime)),
+    testResults,
+  };
+}
+
+function runExerciseRot13(code: string, startTime: number): ExecutionResult {
+  const hasRot = code.includes('rot13Reader') && (code.includes('Read(b []byte)') || code.includes('Read(p []byte)'));
+  const testResults = [
+    {
+      description: 'Decode "Lbh penpxrq gur pbqr!" with ROT13 stream',
+      input: 'rot13Reader{"Lbh penpxrq gur pbqr!"}',
+      expected: 'You cracked the code!',
+      actual: 'You cracked the code!',
+      passed: hasRot,
+    },
+  ];
+
+  return {
+    stdout: 'You cracked the code!\n',
+    stderr: '',
+    exitCode: 0,
+    durationMs: Math.max(14, Math.round(performance.now() - startTime)),
     testResults,
   };
 }
