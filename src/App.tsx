@@ -254,12 +254,13 @@ export default function App() {
             onApplySolution={handleApplySolution}
             currentIndex={currentLessonIndex}
             totalLessons={LESSONS.length}
+            darkMode={darkMode}
           />
         </section>
 
         {/* Right Panel: Code Editor on Top, Terminal Console on Bottom */}
         <section
-          className={`w-full md:flex-1 h-full flex flex-col bg-slate-900 overflow-hidden ${
+          className={`w-full md:flex-1 h-full flex flex-col bg-[#FDFBF2] dark:bg-slate-900 overflow-hidden ${
             mobileTab === 'tutorial' ? 'hidden md:flex' : 'flex'
           }`}
           aria-label="Code playground and terminal"
@@ -272,6 +273,7 @@ export default function App() {
               onRun={handleRunCode}
               onReset={handleResetCode}
               isRunning={isRunning}
+              darkMode={darkMode}
             />
           </div>
 
@@ -282,6 +284,7 @@ export default function App() {
               isRunning={isRunning}
               onClear={() => setExecutionResult(null)}
               isExercise={currentLesson.isExercise}
+              darkMode={darkMode}
             />
           </div>
         </section>

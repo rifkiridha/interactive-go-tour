@@ -1,5 +1,6 @@
 /**
  * Go Syntax & Rainbow Bracket Tokenizer for Tour of Go & VS Code aesthetic
+ * Supports both Dark Mode (VS Code Dark+) and Light Mode (Solarized / Paper Light)
  */
 
 export interface Token {
@@ -38,11 +39,19 @@ const BUILTIN_FUNCS = new Set([
 ]);
 
 // VS Code Rainbow Bracket palette (cycling depths)
-export const RAINBOW_BRACKET_COLORS = [
+export const RAINBOW_BRACKET_COLORS_DARK = [
   '#FFD700', // Gold (depth 0)
   '#DA70D6', // Orchid / Magenta (depth 1)
   '#179FFF', // Bright Cyan (depth 2)
   '#FFA500', // Amber / Orange (depth 3)
+];
+
+// High-contrast Rainbow Bracket palette for Light theme (warm parchment background)
+export const RAINBOW_BRACKET_COLORS_LIGHT = [
+  '#B45309', // Dark Amber / Gold (depth 0)
+  '#7C3AED', // Vivid Purple (depth 1)
+  '#0284C7', // Vivid Blue (depth 2)
+  '#C2410C', // Rust Orange (depth 3)
 ];
 
 export function tokenizeGoCode(code: string): Token[] {
@@ -111,7 +120,7 @@ export function tokenizeGoCode(code: string): Token[] {
 
     // 5. Rainbow Brackets: (, ), {, }, [, ]
     if (char === '(' || char === '{' || char === '[') {
-      const currentLevel = bracketDepth % RAINBOW_BRACKET_COLORS.length;
+      const currentLevel = bracketDepth % 4;
       tokens.push({ text: char, type: 'bracket', bracketLevel: currentLevel });
       bracketDepth++;
       i++;
@@ -119,7 +128,7 @@ export function tokenizeGoCode(code: string): Token[] {
     }
     if (char === ')' || char === '}' || char === ']') {
       bracketDepth = Math.max(0, bracketDepth - 1);
-      const currentLevel = bracketDepth % RAINBOW_BRACKET_COLORS.length;
+      const currentLevel = bracketDepth % 4;
       tokens.push({ text: char, type: 'bracket', bracketLevel: currentLevel });
       i++;
       continue;
@@ -205,29 +214,56 @@ export function tokenizeGoCode(code: string): Token[] {
 }
 
 /**
- * Returns the CSS color code matching VS Code Dark+ & Tour of Go themes
+ * Returns CSS color code matching theme (dark vs light)
  */
-export function getTokenColor(token: Token): string {
-  switch (token.type) {
-    case 'keyword':
-      return '#C586C0'; // Purple / Magenta (VS Code keyword color)
-    case 'builtin-type':
-      return '#4EC9B0'; // Teal / Cyan (Go types)
-    case 'function':
-      return '#DCDCAA'; // Warm Gold / Yellow (Functions)
-    case 'string':
-      return '#CE9178'; // Coral Orange / Amber (Strings)
-    case 'number':
-      return '#B5CEA8'; // Mint Light Green (Numbers)
-    case 'comment':
-      return '#6A9955'; // Moss Green Italic (Comments)
-    case 'operator':
-      return '#569CD6'; // Sky Blue / Cyan (Operators)
-    case 'bracket':
-      return RAINBOW_BRACKET_COLORS[token.bracketLevel ?? 0] || '#FFD700';
-    case 'punctuation':
-      return '#D4D4D4';
-    default:
-      return '#9CDCFE'; // Light Blue (Variables & Identifiers)
+export function getTokenColor(token: Token, isDark: boolean = true): string {
+  if (isDark) {
+    // VS Code Dark+ palette
+    switch (token.type) {
+      case 'keyword':
+        return '#C586C0'; // Purple / Magenta
+      case 'builtin-type':
+        return '#4EC9B0'; // Teal / Cyan
+      case 'function':
+        return '#DCDCAA'; // Warm Gold / Yellow
+      case 'string':
+        return '#CE9178'; // Coral Orange / Amber
+      case 'number':
+        return '#B5CEA8'; // Mint Light Green
+      case 'comment':
+        return '#6A9955'; // Moss Green Italic
+      case 'operator':
+        return '#569CD6'; // Sky Blue
+      case 'bracket':
+        return RAINBOW_BRACKET_COLORS_DARK[token.bracketLevel ?? 0] || '#FFD700';
+      case 'punctuation':
+        return '#D4D4D4';
+      default:
+        return '#9CDCFE'; // Light Blue (Variables)
+    }
+  } else {
+    // Light Theme (Solarized / Warm Paper Light) with high contrast & legibility
+    switch (token.type) {
+      case 'keyword':
+        return '#7C3AED'; // Deep Violet / Purple
+      case 'builtin-type':
+        return '#0D9488'; // Deep Teal / Go Cyan-Blue
+      case 'function':
+        return '#92400E'; // Dark Amber / Ochre
+      case 'string':
+        return '#B91C1C'; // Deep Crimson / Rust Red
+      case 'number':
+        return '#047857'; // Deep Emerald Green
+      case 'comment':
+        return '#64748B'; // Slate Muted Italic
+      case 'operator':
+        return '#0284C7'; // Cerulean Blue
+      case 'bracket':
+        return RAINBOW_BRACKET_COLORS_LIGHT[token.bracketLevel ?? 0] || '#B45309';
+      case 'punctuation':
+        return '#475569';
+      default:
+        return '#1E293B'; // Deep Charcoal / Slate for variables
+    }
   }
 }

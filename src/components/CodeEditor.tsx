@@ -18,6 +18,7 @@ interface CodeEditorProps {
   onRun: () => void;
   onReset: () => void;
   isRunning: boolean;
+  darkMode: boolean;
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -26,6 +27,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   onRun,
   onReset,
   isRunning,
+  darkMode,
 }) => {
   const [copied, setCopied] = useState(false);
   const [fontSize, setFontSize] = useState<number>(13);
@@ -88,25 +90,50 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Tokenize code for VS Code syntax & rainbow brackets
+  // Tokenize code for syntax & rainbow brackets
   const tokens = useMemo(() => {
     return tokenizeGoCode(code);
   }, [code]);
 
   const lines = code.split('\n');
 
+  // Dynamic theme colors
+  const themeClasses = darkMode
+    ? {
+        rootBg: 'bg-[#1e1e1e] text-slate-100',
+        toolbarBg: 'bg-[#252526] border-[#333333]',
+        gutterBg: 'bg-[#1e1e1e] text-[#858585] border-[#333333]',
+        canvasBg: 'bg-[#1e1e1e]',
+        divider: 'bg-slate-700',
+        btnHover: 'text-slate-400 hover:text-white hover:bg-slate-700/60',
+        btnText: 'text-slate-300 hover:text-white',
+        caretClass: 'caret-white selection:bg-[#264f78]/80 selection:text-white',
+        plainText: 'text-slate-100',
+      }
+    : {
+        rootBg: 'bg-[#FDFBF2] text-slate-800',
+        toolbarBg: 'bg-[#F5EED9] border-[#E8DFCA]',
+        gutterBg: 'bg-[#F9F4E5] text-[#8C8067] border-[#E8DFCA]',
+        canvasBg: 'bg-[#FDFBF2]',
+        divider: 'bg-[#DCD2B9]',
+        btnHover: 'text-[#6A5F45] hover:text-slate-900 hover:bg-[#EAE1C8]',
+        btnText: 'text-[#564D36] hover:text-slate-900',
+        caretClass: 'caret-[#00ADD8] selection:bg-amber-200/90 selection:text-slate-900',
+        plainText: 'text-slate-800',
+      };
+
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e] text-slate-100 font-mono text-xs select-text overflow-hidden">
+    <div className={`flex flex-col h-full font-mono text-xs select-text overflow-hidden transition-colors duration-150 ${themeClasses.rootBg}`}>
       {/* Editor Header Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-[#333333] shrink-0">
+      <div className={`flex items-center justify-between px-4 py-2 border-b shrink-0 transition-colors ${themeClasses.toolbarBg}`}>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-slate-300 font-medium">
+          <div className="flex items-center gap-2 font-medium">
             <span className="w-2.5 h-2.5 rounded-full bg-[#00ADD8]" />
             <span className="text-xs tracking-wide">main.go</span>
           </div>
-          <span className="text-slate-600 hidden sm:inline" aria-hidden="true">·</span>
-          <span className="text-slate-400 text-[11px] hidden sm:inline">
-            VS Code Dark+
+          <span className="opacity-40 hidden sm:inline" aria-hidden="true">·</span>
+          <span className="opacity-70 text-[11px] hidden sm:inline font-sans">
+            {darkMode ? 'VS Code Dark+' : 'Solarized Light'}
           </span>
         </div>
 
@@ -118,45 +145,47 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             title={enableRainbow ? 'Rainbow Syntax Enabled' : 'Enable Rainbow Syntax'}
             className={`flex items-center gap-1 px-2 py-1 rounded transition-colors text-[11px] font-sans font-medium ${
               enableRainbow
-                ? 'bg-purple-950/60 text-purple-300 border border-purple-700/50'
-                : 'text-slate-400 hover:text-white hover:bg-slate-700/60'
+                ? darkMode
+                  ? 'bg-purple-950/60 text-purple-300 border border-purple-700/50'
+                  : 'bg-purple-100/90 text-purple-900 border border-purple-300'
+                : themeClasses.btnHover
             }`}
           >
-            <Palette className="w-3.5 h-3.5 text-purple-400" />
+            <Palette className="w-3.5 h-3.5 text-purple-500" />
             <span className="hidden md:inline">Rainbow</span>
           </button>
 
-          <div className="h-4 w-px bg-slate-700 mx-1" />
+          <div className={`h-4 w-px mx-1 ${themeClasses.divider}`} />
 
           <button
             onClick={() => setFontSize(prev => Math.max(11, prev - 1))}
             title="Decrease font size"
-            className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-slate-700/60 transition-colors"
+            className={`p-1.5 rounded transition-colors ${themeClasses.btnHover}`}
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setFontSize(prev => Math.min(18, prev + 1))}
             title="Increase font size"
-            className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-slate-700/60 transition-colors"
+            className={`p-1.5 rounded transition-colors ${themeClasses.btnHover}`}
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
 
-          <div className="h-4 w-px bg-slate-700 mx-1" />
+          <div className={`h-4 w-px mx-1 ${themeClasses.divider}`} />
 
           <button
             onClick={handleCopy}
             title="Copy code"
-            className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-slate-700/60 transition-colors"
+            className={`p-1.5 rounded transition-colors ${themeClasses.btnHover}`}
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
 
           <button
             onClick={handleFormat}
             title="Format code (gofmt)"
-            className="flex items-center gap-1 px-2.5 py-1 text-slate-300 hover:text-white rounded hover:bg-slate-700/60 transition-colors text-[11px] font-sans font-medium"
+            className={`flex items-center gap-1 px-2.5 py-1 rounded transition-colors text-[11px] font-sans font-medium ${themeClasses.btnHover}`}
           >
             <AlignLeft className="w-3.5 h-3.5 text-[#00ADD8]" />
             <span className="hidden sm:inline">Format</span>
@@ -165,13 +194,13 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={onReset}
             title="Reset to original code"
-            className="flex items-center gap-1 px-2.5 py-1 text-slate-300 hover:text-white rounded hover:bg-slate-700/60 transition-colors text-[11px] font-sans font-medium"
+            className={`flex items-center gap-1 px-2.5 py-1 rounded transition-colors text-[11px] font-sans font-medium ${themeClasses.btnHover}`}
           >
-            <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+            <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
             <span className="hidden sm:inline">Reset</span>
           </button>
 
-          <div className="h-4 w-px bg-slate-700 mx-1" />
+          <div className={`h-4 w-px mx-1 ${themeClasses.divider}`} />
 
           <button
             onClick={onRun}
@@ -192,12 +221,12 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       </div>
 
       {/* Editor Body */}
-      <div className="flex-1 flex overflow-hidden relative bg-[#1e1e1e]">
+      <div className={`flex-1 flex overflow-hidden relative transition-colors ${themeClasses.canvasBg}`}>
         {/* Line numbers gutter */}
         <div
           ref={lineNumbersRef}
           aria-hidden="true"
-          className="w-12 py-3 pr-3 text-right bg-[#1e1e1e] text-[#858585] select-none overflow-hidden shrink-0 font-mono border-r border-[#333333]"
+          className={`w-12 py-3 pr-3 text-right select-none overflow-hidden shrink-0 font-mono border-r transition-colors ${themeClasses.gutterBg}`}
           style={{ fontSize: `${fontSize}px`, lineHeight: '1.6' }}
         >
           {lines.map((_, i) => (
@@ -220,7 +249,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
               }}
             >
               {tokens.map((token, idx) => {
-                const color = getTokenColor(token);
+                const color = getTokenColor(token, darkMode);
                 const isComment = token.type === 'comment';
                 const isBracket = token.type === 'bracket';
 
@@ -253,8 +282,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             autoCorrect="off"
             className={`absolute inset-0 p-3 m-0 resize-none overflow-auto font-mono whitespace-pre leading-relaxed outline-hidden border-0 z-10 ${
               enableRainbow
-                ? 'bg-transparent text-transparent caret-white selection:bg-[#264f78]/80 selection:text-white'
-                : 'bg-transparent text-slate-100 caret-[#00ADD8]'
+                ? `bg-transparent text-transparent ${themeClasses.caretClass}`
+                : `bg-transparent ${themeClasses.plainText} caret-[#00ADD8]`
             }`}
             style={{
               fontSize: `${fontSize}px`,

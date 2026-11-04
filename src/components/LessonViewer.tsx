@@ -21,6 +21,7 @@ interface LessonViewerProps {
   onApplySolution?: (code: string) => void;
   currentIndex: number;
   totalLessons: number;
+  darkMode: boolean;
 }
 
 export const LessonViewer: React.FC<LessonViewerProps> = ({
@@ -34,6 +35,7 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
   onApplySolution,
   currentIndex,
   totalLessons,
+  darkMode,
 }) => {
   const [showHint, setShowHint] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
@@ -41,7 +43,7 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
   const renderHighlightedCode = (rawCode: string) => {
     const tokens = tokenizeGoCode(rawCode);
     return tokens.map((token, i) => {
-      const color = getTokenColor(token);
+      const color = getTokenColor(token, darkMode);
       const isComment = token.type === 'comment';
       const isBracket = token.type === 'bracket';
       return (
@@ -73,7 +75,11 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
           elements.push(
             <pre
               key={`code-${idx}`}
-              className="my-3 p-3.5 bg-[#1e1e1e] text-slate-100 rounded-lg text-xs font-mono overflow-x-auto border border-[#333333] shadow-xs"
+              className={`my-3 p-3.5 rounded-lg text-xs font-mono overflow-x-auto border transition-colors ${
+                darkMode
+                  ? 'bg-[#1e1e1e] border-[#333333] text-slate-100'
+                  : 'bg-[#FDFBF2] border-[#E8DFCA] text-slate-800 shadow-2xs'
+              }`}
             >
               <code>{renderHighlightedCode(rawCode)}</code>
             </pre>
@@ -275,9 +281,13 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
                   )}
                 </div>
 
-                {showSolution && (
+                 {showSolution && (
                   <div className="mt-3">
-                    <pre className="p-3 bg-[#1e1e1e] text-slate-100 rounded-lg text-xs font-mono overflow-x-auto border border-[#333333]">
+                    <pre className={`p-3 rounded-lg text-xs font-mono overflow-x-auto border transition-colors ${
+                      darkMode
+                        ? 'bg-[#1e1e1e] border-[#333333] text-slate-100'
+                        : 'bg-[#FDFBF2] border-[#E8DFCA] text-slate-800'
+                    }`}>
                       <code>{renderHighlightedCode(lesson.solutionCode)}</code>
                     </pre>
                   </div>
