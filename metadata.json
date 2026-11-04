@@ -1,0 +1,6 @@
+{
+  "name": "A Tour of Go",
+  "description": "An interactive tutorial and playground for learning the Go programming language, featuring syntax walkthroughs, runnable code examples, exercises, and a live Go playground.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
