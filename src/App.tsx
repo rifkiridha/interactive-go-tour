@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LESSONS, MODULES } from './data/lessons';
 import { Lesson, ExecutionResult } from './types';
 import { executeGoCode } from './utils/goInterpreter';
@@ -69,10 +69,27 @@ export default function App() {
   // Mobile tab state
   const [mobileTab, setMobileTab] = useState<'tutorial' | 'code'>('tutorial');
 
+  // Adjustable layout splitter states
+  const mainContainerRef = useRef<HTMLElement>(null);
+  const rightPanelRef = useRef<HTMLElement>(null);
+
+  // Horizontal split (Left Tutorial width %)
+  const [hSplitPercent, setHSplitPercent] = useState<number>(() => {
+    const saved = localStorage.getItem('tour_go_h_split');
+    return saved !== null ? Math.min(75, Math.max(20, parseFloat(saved))) : 45;
+  });
+  const [isDraggingH, setIsDraggingH] = useState(false);
+
+  // Vertical split (Terminal height % of right panel)
+  const [vSplitPercent, setVSplitPercent] = useState<number>(() => {
+    const saved = localStorage.getItem('tour_go_v_split');
+    return saved !== null ? Math.min(75, Math.max(15, parseFloat(saved))) : 35;
+  });
+  const [isDraggingV, setIsDraggingV] = useState(false);
+
   // Save lesson index
   useEffect(() => {
     localStorage.setItem('tour_go_lesson_index', String(currentLessonIndex));
-    // Clear old execution result when switching slides
     setExecutionResult(null);
   }, [currentLessonIndex]);
 
@@ -118,13 +135,11 @@ export default function App() {
   // Run code handler
   const handleRunCode = useCallback(() => {
     setIsRunning(true);
-    // Slight tick to allow UI to show running state
     setTimeout(() => {
       const res = executeGoCode(currentCode, currentLesson.id);
       setExecutionResult(res);
       setIsRunning(false);
 
-      // If exercise and all tests passed, auto-mark completed
       if (currentLesson.isExercise && res.testResults?.every(t => t.passed)) {
         setCompletedLessonIds(prev => {
           const next = new Set(prev);
@@ -163,31 +178,87 @@ export default function App() {
     }
   };
 
+  // ---------------- Horizontal Splitter Dragging ----------------
+  const handlePointerDownH = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDraggingH(true);
+  };
+
+  useEffect(() => {
+    if (!isDraggingH) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!mainContainerRef.current) return;
+      const rect = mainContainerRef.current.getBoundingClientRect();
+      const newPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.min(75, Math.max(20, newPercent));
+      setHSplitPercent(clamped);
+    };
+
+    const handlePointerUp = () => {
+      setIsDraggingH(false);
+      localStorage.setItem('tour_go_h_split', String(hSplitPercent));
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [isDraggingH, hSplitPercent]);
+
+  // ---------------- Vertical Splitter Dragging ----------------
+  const handlePointerDownV = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDraggingV(true);
+  };
+
+  useEffect(() => {
+    if (!isDraggingV) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!rightPanelRef.current) return;
+      const rect = rightPanelRef.current.getBoundingClientRect();
+      const fromBottomPercent = ((rect.bottom - e.clientY) / rect.height) * 100;
+      const clamped = Math.min(75, Math.max(15, fromBottomPercent));
+      setVSplitPercent(clamped);
+    };
+
+    const handlePointerUp = () => {
+      setIsDraggingV(false);
+      localStorage.setItem('tour_go_v_split', String(vSplitPercent));
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [isDraggingV, vSplitPercent]);
+
   // Keyboard navigation shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+Enter or Cmd+Enter to Run
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         handleRunCode();
         return;
       }
 
-      // Alt+Right for Next slide
       if (e.altKey && e.key === 'ArrowRight') {
         e.preventDefault();
         handleNext();
         return;
       }
 
-      // Alt+Left for Previous slide
       if (e.altKey && e.key === 'ArrowLeft') {
         e.preventDefault();
         handlePrevious();
         return;
       }
 
-      // Escape to close open modals
       if (e.key === 'Escape') {
         setIsTOCOpen(false);
         setIsShortcutsOpen(false);
@@ -199,7 +270,11 @@ export default function App() {
   }, [handleRunCode, handleNext, handlePrevious]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div
+      className={`flex flex-col h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 ${
+        isDraggingH ? 'cursor-col-resize select-none' : isDraggingV ? 'cursor-row-resize select-none' : ''
+      }`}
+    >
       {/* Top Navigation Bar */}
       <TopBar
         onOpenTOC={() => setIsTOCOpen(true)}
@@ -211,7 +286,7 @@ export default function App() {
       />
 
       {/* Mobile Tab Switcher */}
-      <div className="md:hidden flex items-center border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-semibold">
+      <div className="md:hidden flex items-center border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-semibold shrink-0">
         <button
           onClick={() => setMobileTab('tutorial')}
           className={`flex-1 py-1.5 text-center rounded-md transition-colors ${
@@ -235,11 +310,15 @@ export default function App() {
       </div>
 
       {/* Main Split-Screen Workspace */}
-      <main className="flex-1 flex overflow-hidden">
+      <main
+        ref={mainContainerRef}
+        className="flex-1 flex overflow-hidden relative"
+      >
         {/* Left Panel: Tutorial & Lesson Guide */}
         <section
-          className={`w-full md:w-[48%] lg:w-[45%] xl:w-[42%] h-full shrink-0 ${
-            mobileTab === 'code' ? 'hidden md:block' : 'block'
+          style={{ width: `${hSplitPercent}%` }}
+          className={`h-full shrink-0 min-w-[280px] ${
+            mobileTab === 'code' ? 'hidden md:block' : 'w-full md:w-auto block'
           }`}
           aria-label="Lesson content"
         >
@@ -258,15 +337,34 @@ export default function App() {
           />
         </section>
 
+        {/* Horizontal Splitter (Left vs Right) */}
+        <div
+          onPointerDown={handlePointerDownH}
+          onDoubleClick={() => setHSplitPercent(45)}
+          title="Drag to resize panels · Double-click to reset"
+          className={`hidden md:flex relative cursor-col-resize shrink-0 z-20 group select-none items-center justify-center w-1 hover:w-1 -mx-0.5 transition-colors duration-150 ${
+            isDraggingH
+              ? 'bg-[#00ADD8] shadow-xs'
+              : 'bg-transparent hover:bg-[#00ADD8]'
+          }`}
+        >
+          {/* Expanded hit target for effortless grab */}
+          <div className="absolute inset-y-0 -left-2 -right-2 cursor-col-resize" />
+        </div>
+
         {/* Right Panel: Code Editor on Top, Terminal Console on Bottom */}
         <section
-          className={`w-full md:flex-1 h-full flex flex-col bg-[#FDFBF2] dark:bg-slate-900 overflow-hidden ${
-            mobileTab === 'tutorial' ? 'hidden md:flex' : 'flex'
+          ref={rightPanelRef}
+          className={`h-full flex flex-col bg-[#FDFBF2] dark:bg-slate-900 overflow-hidden shrink-0 flex-1 min-w-[320px] ${
+            mobileTab === 'tutorial' ? 'hidden md:flex' : 'w-full md:w-auto flex'
           }`}
           aria-label="Code playground and terminal"
         >
-          {/* Top 62% Code Editor */}
-          <div className="flex-1 min-h-[300px] overflow-hidden">
+          {/* Top Code Editor */}
+          <div
+            style={{ height: `${100 - vSplitPercent}%` }}
+            className="min-h-[140px] overflow-hidden flex flex-col"
+          >
             <CodeEditor
               code={currentCode}
               onChange={handleCodeChange}
@@ -277,8 +375,26 @@ export default function App() {
             />
           </div>
 
-          {/* Bottom 38% Output Console */}
-          <div className="h-[260px] lg:h-[300px] shrink-0 overflow-hidden">
+          {/* Vertical Splitter (Editor vs Terminal) */}
+          <div
+            onPointerDown={handlePointerDownV}
+            onDoubleClick={() => setVSplitPercent(35)}
+            title="Drag to resize terminal · Double-click to reset"
+            className={`relative cursor-row-resize shrink-0 z-20 group select-none items-center justify-center h-1 hover:h-1 -my-0.5 transition-colors duration-150 ${
+              isDraggingV
+                ? 'bg-[#00ADD8] shadow-xs'
+                : 'bg-transparent hover:bg-[#00ADD8]'
+            }`}
+          >
+            {/* Expanded hit target for effortless grab */}
+            <div className="absolute inset-x-0 -top-2 -bottom-2 cursor-row-resize" />
+          </div>
+
+          {/* Bottom Output Console */}
+          <div
+            style={{ height: `${vSplitPercent}%` }}
+            className="min-h-[120px] overflow-hidden flex flex-col"
+          >
             <OutputConsole
               result={executionResult}
               isRunning={isRunning}
