@@ -131,10 +131,6 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-[#00ADD8]" />
             <span className="text-xs tracking-wide">main.go</span>
           </div>
-          <span className="opacity-40 hidden sm:inline" aria-hidden="true">·</span>
-          <span className="opacity-70 text-[11px] hidden sm:inline font-sans">
-            {darkMode ? 'VS Code Dark+' : 'Solarized Light'}
-          </span>
         </div>
 
         {/* Toolbar Actions */}

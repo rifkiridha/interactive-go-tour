@@ -1,41 +1,46 @@
 import React from 'react';
-import { BookOpen, Moon, Sun, HelpCircle } from 'lucide-react';
+import { Layers, Moon, Sun, HelpCircle, Terminal } from 'lucide-react';
 
 interface TopBarProps {
-  onOpenTOC: () => void;
+  onOpenSubjects: () => void;
   onOpenShortcuts: () => void;
   darkMode: boolean;
   onToggleDarkMode: () => void;
   activeModuleId: string;
   onSelectModule: (moduleId: string) => void;
+  activeSubjectTitle?: string;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
-  onOpenTOC,
+  onOpenSubjects,
   onOpenShortcuts,
   darkMode,
   onToggleDarkMode,
   activeModuleId,
   onSelectModule,
+  activeSubjectTitle = 'Go',
 }) => {
   return (
-    <header className="flex items-center justify-between gap-8 px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-30 transition-colors">
-      {/* Zone 1: Single text element wordmark */}
+    <header className="flex items-center justify-between gap-8 px-5 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-30 transition-colors shrink-0">
+      {/* Zone 1: Single text element wordmark for the overall tutorial platform */}
       <a
         href="#"
         onClick={(e) => {
           e.preventDefault();
           onSelectModule('basics');
         }}
-        className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap shrink-0 group"
+        className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap shrink-0 group"
       >
-        <span className="w-7 h-7 rounded-md bg-[#00ADD8] flex items-center justify-center text-white font-extrabold text-sm tracking-tighter shadow-sm group-hover:scale-105 transition-transform">
-          Go
+        <span className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-slate-800 flex items-center justify-center text-[#00ADD8] shadow-2xs group-hover:bg-[#00ADD8] group-hover:text-white transition-colors">
+          <Terminal className="w-4 h-4 stroke-[2.5]" />
         </span>
-        <span className="tracking-tight">A Tour of Go</span>
+        <span className="tracking-tight text-base font-extrabold">DevTour</span>
+        <span className="text-[11px] font-semibold text-[#00ADD8] bg-[#00ADD8]/10 dark:bg-[#00ADD8]/20 px-2 py-0.5 rounded-full ml-1 hidden sm:inline-block">
+          {activeSubjectTitle}
+        </span>
       </a>
 
-      {/* Zone 2: 4-5 concise single-line nav links */}
+      {/* Zone 2: Concise single-line nav links for quick module jumping */}
       <nav className="hidden lg:flex items-center gap-7 text-sm font-medium text-slate-600 dark:text-slate-300">
         <button
           onClick={() => onSelectModule('basics')}
@@ -80,7 +85,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       </nav>
 
       {/* Zone 3: 1 primary action area */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2.5 shrink-0">
         <button
           onClick={onOpenShortcuts}
           title="Keyboard shortcuts"
@@ -99,12 +104,13 @@ export const TopBar: React.FC<TopBarProps> = ({
           {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
         </button>
 
+        {/* Subjects & Learning Tracks Button (replaces the old TOC button) */}
         <button
-          onClick={onOpenTOC}
-          className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-[#00ADD8] dark:hover:bg-[#009ac0] rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-sm"
+          onClick={onOpenSubjects}
+          className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-700/50 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-2xs group"
         >
-          <BookOpen className="w-3.5 h-3.5" />
-          <span>Table of Contents</span>
+          <Layers className="w-3.5 h-3.5 text-[#00ADD8] group-hover:scale-110 transition-transform" />
+          <span>Subjects</span>
         </button>
       </div>
     </header>

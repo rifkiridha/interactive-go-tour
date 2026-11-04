@@ -11,7 +11,8 @@ import { TopBar } from './components/TopBar';
 import { LessonViewer } from './components/LessonViewer';
 import { CodeEditor } from './components/CodeEditor';
 import { OutputConsole } from './components/OutputConsole';
-import { TableOfContentsModal } from './components/TableOfContentsModal';
+import { SidebarTOC } from './components/SidebarTOC';
+import { SubjectSwitcherModal } from './components/SubjectSwitcherModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
 
 export default function App() {
@@ -62,30 +63,42 @@ export default function App() {
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [isRunning, setIsRunning] = useState<boolean>(false);
 
-  // Modals state
-  const [isTOCOpen, setIsTOCOpen] = useState<boolean>(false);
+  // Subject switcher & Modals state
+  const [activeSubjectId, setActiveSubjectId] = useState<string>('tour-of-go');
+  const [isSubjectsOpen, setIsSubjectsOpen] = useState<boolean>(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
 
   // Mobile tab state
   const [mobileTab, setMobileTab] = useState<'tutorial' | 'code'>('tutorial');
 
-  // Adjustable layout splitter states
+  // Adjustable layout splitter states & refs
   const mainContainerRef = useRef<HTMLElement>(null);
   const rightPanelRef = useRef<HTMLElement>(null);
 
-  // Horizontal split (Left Tutorial width %)
+  // Sidebar Table of Contents (W3Schools style)
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    const saved = localStorage.getItem('tour_go_sidebar_open');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('tour_go_sidebar_width');
+    return saved !== null ? Math.min(460, Math.max(200, parseInt(saved, 10))) : 260;
+  });
+  const [isDraggingSidebar, setIsDraggingSidebar] = useState<boolean>(false);
+
+  // Horizontal split (Center Lesson width % relative to editor)
   const [hSplitPercent, setHSplitPercent] = useState<number>(() => {
     const saved = localStorage.getItem('tour_go_h_split');
-    return saved !== null ? Math.min(75, Math.max(20, parseFloat(saved))) : 45;
+    return saved !== null ? Math.min(75, Math.max(25, parseFloat(saved))) : 45;
   });
-  const [isDraggingH, setIsDraggingH] = useState(false);
+  const [isDraggingH, setIsDraggingH] = useState<boolean>(false);
 
   // Vertical split (Terminal height % of right panel)
   const [vSplitPercent, setVSplitPercent] = useState<number>(() => {
     const saved = localStorage.getItem('tour_go_v_split');
     return saved !== null ? Math.min(75, Math.max(15, parseFloat(saved))) : 35;
   });
-  const [isDraggingV, setIsDraggingV] = useState(false);
+  const [isDraggingV, setIsDraggingV] = useState<boolean>(false);
 
   // Save lesson index
   useEffect(() => {
@@ -178,7 +191,45 @@ export default function App() {
     }
   };
 
-  // ---------------- Horizontal Splitter Dragging ----------------
+  // Toggle sidebar collapse
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen(prev => {
+      const next = !prev;
+      localStorage.setItem('tour_go_sidebar_open', String(next));
+      return next;
+    });
+  };
+
+  // ---------------- Sidebar Width Dragging ----------------
+  const handlePointerDownSidebar = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDraggingSidebar(true);
+  };
+
+  useEffect(() => {
+    if (!isDraggingSidebar) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!mainContainerRef.current) return;
+      const rect = mainContainerRef.current.getBoundingClientRect();
+      const newWidth = e.clientX - rect.left;
+      setSidebarWidth(Math.min(460, Math.max(200, newWidth)));
+    };
+
+    const handlePointerUp = () => {
+      setIsDraggingSidebar(false);
+      localStorage.setItem('tour_go_sidebar_width', String(sidebarWidth));
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [isDraggingSidebar, sidebarWidth]);
+
+  // ---------------- Horizontal Splitter Dragging (Center vs Right) ----------------
   const handlePointerDownH = (e: React.PointerEvent) => {
     e.preventDefault();
     setIsDraggingH(true);
@@ -190,9 +241,13 @@ export default function App() {
     const handlePointerMove = (e: PointerEvent) => {
       if (!mainContainerRef.current) return;
       const rect = mainContainerRef.current.getBoundingClientRect();
-      const newPercent = ((e.clientX - rect.left) / rect.width) * 100;
-      const clamped = Math.min(75, Math.max(20, newPercent));
-      setHSplitPercent(clamped);
+      const effectiveLeft = isSidebarOpen ? sidebarWidth : 40;
+      const availableWidth = rect.width - effectiveLeft;
+      if (availableWidth <= 0) return;
+
+      const offsetInRemaining = e.clientX - (rect.left + effectiveLeft);
+      const newPercent = (offsetInRemaining / availableWidth) * 100;
+      setHSplitPercent(Math.min(75, Math.max(25, newPercent)));
     };
 
     const handlePointerUp = () => {
@@ -206,9 +261,9 @@ export default function App() {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDraggingH, hSplitPercent]);
+  }, [isDraggingH, hSplitPercent, isSidebarOpen, sidebarWidth]);
 
-  // ---------------- Vertical Splitter Dragging ----------------
+  // ---------------- Vertical Splitter Dragging (Editor vs Terminal) ----------------
   const handlePointerDownV = (e: React.PointerEvent) => {
     e.preventDefault();
     setIsDraggingV(true);
@@ -221,8 +276,7 @@ export default function App() {
       if (!rightPanelRef.current) return;
       const rect = rightPanelRef.current.getBoundingClientRect();
       const fromBottomPercent = ((rect.bottom - e.clientY) / rect.height) * 100;
-      const clamped = Math.min(75, Math.max(15, fromBottomPercent));
-      setVSplitPercent(clamped);
+      setVSplitPercent(Math.min(75, Math.max(15, fromBottomPercent)));
     };
 
     const handlePointerUp = () => {
@@ -260,7 +314,7 @@ export default function App() {
       }
 
       if (e.key === 'Escape') {
-        setIsTOCOpen(false);
+        setIsSubjectsOpen(false);
         setIsShortcutsOpen(false);
       }
     };
@@ -272,17 +326,22 @@ export default function App() {
   return (
     <div
       className={`flex flex-col h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 ${
-        isDraggingH ? 'cursor-col-resize select-none' : isDraggingV ? 'cursor-row-resize select-none' : ''
+        isDraggingSidebar || isDraggingH
+          ? 'cursor-col-resize select-none'
+          : isDraggingV
+          ? 'cursor-row-resize select-none'
+          : ''
       }`}
     >
-      {/* Top Navigation Bar */}
+      {/* Top Navigation Bar with Platform Branding & Subjects Switcher */}
       <TopBar
-        onOpenTOC={() => setIsTOCOpen(true)}
+        onOpenSubjects={() => setIsSubjectsOpen(true)}
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode(prev => !prev)}
         activeModuleId={currentLesson.moduleId}
         onSelectModule={handleSelectModule}
+        activeSubjectTitle="Go"
       />
 
       {/* Mobile Tab Switcher */}
@@ -309,15 +368,41 @@ export default function App() {
         </button>
       </div>
 
-      {/* Main Split-Screen Workspace */}
+      {/* Main 3-Zone Workspace */}
       <main
         ref={mainContainerRef}
         className="flex-1 flex overflow-hidden relative"
       >
-        {/* Left Panel: Tutorial & Lesson Guide */}
+        {/* 1. Leftmost Panel: W3Schools-Style Scrollable & Collapsible Table of Contents */}
+        <SidebarTOC
+          currentLessonId={currentLesson.id}
+          onSelectLesson={handleSelectLesson}
+          completedLessonIds={completedLessonIds}
+          isOpen={isSidebarOpen}
+          onToggleOpen={handleToggleSidebar}
+          width={sidebarWidth}
+        />
+
+        {/* Sidebar Resizable Splitter (Invisible at rest, illuminated on hover) */}
+        {isSidebarOpen && (
+          <div
+            onPointerDown={handlePointerDownSidebar}
+            onDoubleClick={() => setSidebarWidth(260)}
+            title="Drag to resize syllabus width · Double-click to reset"
+            className={`hidden md:flex relative cursor-col-resize shrink-0 z-20 group select-none items-center justify-center w-1 hover:w-1 -mx-0.5 transition-colors duration-150 ${
+              isDraggingSidebar
+                ? 'bg-[#00ADD8] shadow-xs'
+                : 'bg-transparent hover:bg-[#00ADD8]'
+            }`}
+          >
+            <div className="absolute inset-y-0 -left-2 -right-2 cursor-col-resize" />
+          </div>
+        )}
+
+        {/* 2. Middle Panel: Tutorial Guide (Lesson Content) */}
         <section
           style={{ width: `${hSplitPercent}%` }}
-          className={`h-full shrink-0 min-w-[280px] ${
+          className={`h-full shrink-0 min-w-[280px] overflow-hidden ${
             mobileTab === 'code' ? 'hidden md:block' : 'w-full md:w-auto block'
           }`}
           aria-label="Lesson content"
@@ -337,7 +422,7 @@ export default function App() {
           />
         </section>
 
-        {/* Horizontal Splitter (Left vs Right) */}
+        {/* Horizontal Splitter (Tutorial vs Code Editor) */}
         <div
           onPointerDown={handlePointerDownH}
           onDoubleClick={() => setHSplitPercent(45)}
@@ -348,11 +433,10 @@ export default function App() {
               : 'bg-transparent hover:bg-[#00ADD8]'
           }`}
         >
-          {/* Expanded hit target for effortless grab */}
           <div className="absolute inset-y-0 -left-2 -right-2 cursor-col-resize" />
         </div>
 
-        {/* Right Panel: Code Editor on Top, Terminal Console on Bottom */}
+        {/* 3. Right Panel: Code Editor on Top, Terminal Console on Bottom */}
         <section
           ref={rightPanelRef}
           className={`h-full flex flex-col bg-[#FDFBF2] dark:bg-slate-900 overflow-hidden shrink-0 flex-1 min-w-[320px] ${
@@ -386,7 +470,6 @@ export default function App() {
                 : 'bg-transparent hover:bg-[#00ADD8]'
             }`}
           >
-            {/* Expanded hit target for effortless grab */}
             <div className="absolute inset-x-0 -top-2 -bottom-2 cursor-row-resize" />
           </div>
 
@@ -406,13 +489,12 @@ export default function App() {
         </section>
       </main>
 
-      {/* Table of Contents Modal */}
-      <TableOfContentsModal
-        isOpen={isTOCOpen}
-        onClose={() => setIsTOCOpen(false)}
-        currentLessonId={currentLesson.id}
-        onSelectLesson={handleSelectLesson}
-        completedLessonIds={completedLessonIds}
+      {/* Subjects & Learning Tracks Modal (replaces the old TOC button) */}
+      <SubjectSwitcherModal
+        isOpen={isSubjectsOpen}
+        onClose={() => setIsSubjectsOpen(false)}
+        activeSubjectId={activeSubjectId}
+        onSelectSubject={(id) => setActiveSubjectId(id)}
       />
 
       {/* Shortcuts Help Modal */}
